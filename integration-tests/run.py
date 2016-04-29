@@ -261,16 +261,18 @@ def main():
     setup_logging()
     fetch_and_build()
     for db in ('sqlite3', 'mysql'):
-        shell('rm -rf {}/*'.format(INSTALLDIR))
-        setup_and_test(db)
+        for i in xrange(3):
+            shell('rm -rf {}/*'.format(INSTALLDIR))
+            setup_and_test(db, i)
 
 
-def setup_and_test(db):
+def setup_and_test(db, initmode):
     cfg = ServerConfig(
         installdir=INSTALLDIR,
         tarball=join(TOPDIR, 'seafile-server_{}_x86-64.tar.gz'.format(
             seafile_version)),
-        version=seafile_version)
+        version=seafile_version,
+        initmode=initmode)
     info('Setting up seafile server with %s database', db)
     setup_server(cfg, db)
     # enable webdav, we're going to seafdav tests later

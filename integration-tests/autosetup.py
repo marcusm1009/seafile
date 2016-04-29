@@ -22,6 +22,7 @@ ServerConfig = namedtuple('ServerConfig', [
     'installdir',
     'tarball',
     'version',
+    'initmode',
 ])
 
 
@@ -55,6 +56,15 @@ REST_FRAMEWORK = {
 def autosetup_sqlite3(cfg):
     setup_script = get_script(cfg, 'setup-seafile.sh')
     shell('''sed -i -e '/^check_root;.*/d' "{}"'''.format(setup_script))
+
+    if cfg.initmode == 0:
+        setup_sqlite3_with_anwser(setup_script)
+    elif cfg.initmode == 1:
+        setup_sqlite3_with_env(setup_script)
+    else:
+        setup_sqlite3_with_parameter(setup_script)
+
+def setup_sqlite3_with_anwser(setup_script):
     info('setting up seafile server with pexepct, script %s', setup_script)
     answers = [
         ('ENTER', ''),
@@ -71,6 +81,13 @@ def autosetup_sqlite3(cfg):
     ]
     _answer_questions(setup_script, answers)
 
+def setup_sqlite3_with_env(setup_script):
+    info('setting up seafile server in auto mode with env value, script %s', setup_script)
+    shell([setup_script, 'auto'], env={'SERVER_NAME':'my-seafile'})
+
+def setup_sqlite3_with_parameter(setup_script):
+    info('setting up seafile server in auto mode with parameter value, script %s', setup_script)
+    shell([setup_script, 'auto', '-n', 'my-seafile'])
 
 def createdbs():
     sql = '''\
@@ -91,9 +108,19 @@ GRANT ALL PRIVILEGES ON `seahub-existing`.* to `seafile`@localhost;
 def autosetup_mysql(cfg):
     createdbs()
     setup_script = get_script(cfg, 'setup-seafile-mysql.sh')
-    info('setting up seafile server with pexepct, script %s', setup_script)
     if not exists(setup_script):
         print 'please specify seafile script path'
+
+    if cfg.initmode == 0:
+        setup_mysql_with_answer(setup_script)
+    elif cfg.initmode == 1:
+        setup_mysql_with_env(setup_script)
+    else:
+        setup_mysql_with_parameter(setup_script)
+
+
+def setup_mysql_with_answer(setup_script):
+    info('setting up seafile server with pexepct, script %s', setup_script)
     answers = [
         ('ENTER', ''),
         # server name
@@ -117,6 +144,16 @@ def autosetup_mysql(cfg):
     ]
     _answer_questions(abspath(setup_script), answers)
 
+def setup_mysql_with_env(setup_script):
+    info('setting up seafile server in auto mode with env value, script %s', setup_script)
+    shell([setup_script, 'auto'], env={'USE_EXISTING_DB':2, 'MYSQL_USER':'seafile',
+                                       'MYSQL_USER_PASSWD':'seafile', 'CCNET_DB':'ccnet-existing',
+                                       'SEAFILE_DB':'seafile-existing', 'SEAHUB_DB':'seahub-existing'})
+
+def setup_mysql_with_parameter(setup_script):
+    info('setting up seafile server in auto mode with parameter value, script %s', setup_script)
+    shell([setup_script, 'auto', '-e', 2, '-u', 'seafile', '-w', 'seafile',
+           '-c', 'ccnet-existing', '-s', 'seafile-existing', '-b', 'seahub-existing'])
 
 def start_server(cfg):
     with cd(cfg.installdir):
